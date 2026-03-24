@@ -2,68 +2,35 @@
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-server_bin="${project_dir}/bin/iodined"
 client_bin="${project_dir}/bin/iodine"
 
 dns_ip="${DNS_IP:-127.0.0.1}"
 topdomain="${DNS_DOMAIN:-t1.test}"
 password="${DNS_PASSWORD:-codexsecret}"
-tunnel_ip="${TUNNEL_IP:-10.10.10.1}"
-server_log="$(mktemp -t iodine-client-server)"
-client_log="$(mktemp -t iodine-client-client)"
-server_pid=""
-client_pid=""
+client_log="$(mktemp -t iodine-client-log)"
 
 cleanup() {
-  if [[ -n "${client_pid}" ]] && kill -0 "${client_pid}" 2>/dev/null; then
-    kill "${client_pid}" 2>/dev/null || true
-    wait "${client_pid}" 2>/dev/null || true
-  fi
-
-  if [[ -n "${server_pid}" ]] && kill -0 "${server_pid}" 2>/dev/null; then
-    kill "${server_pid}" 2>/dev/null || true
-    wait "${server_pid}" 2>/dev/null || true
-  fi
-
-  rm -f "${server_log}" "${client_log}"
+  rm -f "${client_log}"
 }
 
 trap cleanup EXIT
 
 if [[ "$(id -u)" -ne 0 ]]; then
-  echo "iodine client DNS tunnel test requires root to create the tunnel interface and talk to the server over UDP/53." >&2
+  echo "iodine client requires root to create the tunnel interface." >&2
   exit 2
 fi
 
 make -C "${project_dir}" >/dev/null 2>&1
 
-"${server_bin}" -f -4 -l "${dns_ip}" -P "${password}" "${tunnel_ip}" "${topdomain}" >"${server_log}" 2>&1 &
-server_pid=$!
-sleep 2
-
-if ! kill -0 "${server_pid}" 2>/dev/null; then
-  cat "${server_log}" >&2
-  echo "iodined exited before the iodine client test ran" >&2
-  exit 1
+if [[ -z "${DNS_IP:-}" ]]; then
+  echo "DNS_IP is not set; defaulting to 127.0.0.1. For a real inside/outside test, set DNS_IP to the outside iodined server IP." >&2
 fi
 
-"${client_bin}" -f -r -P "${password}" "${dns_ip}" "${topdomain}" >"${client_log}" 2>&1 &
-client_pid=$!
+"${client_bin}" -f -r -P "${password}" "${dns_ip}" "${topdomain}" 2>&1 | tee "${client_log}"
 
-for _ in $(seq 1 20); do
-  if grep -q "Connection setup complete, transmitting data." "${client_log}"; then
-    echo "iodine client DNS tunnel test passed against ${dns_ip}."
-    exit 0
-  fi
+grep -q "Connection setup complete, transmitting data." "${client_log}" || {
+  echo "iodine client failed to establish the DNS tunnel to ${dns_ip}:53" >&2
+  exit 1
+}
 
-  if [[ -n "${client_pid}" ]] && ! kill -0 "${client_pid}" 2>/dev/null; then
-    break
-  fi
-
-  sleep 1
-done
-
-cat "${server_log}" >&2
-cat "${client_log}" >&2
-echo "iodine client failed to establish the DNS tunnel" >&2
-exit 1
+echo "iodine client DNS tunnel test passed to ${dns_ip}:53."
