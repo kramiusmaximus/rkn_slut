@@ -12,6 +12,24 @@ bundle_log="$(mktemp "${tmp_dir}/dnscat2-server-bundle.XXXXXX")"
 server_log="$(mktemp "${tmp_dir}/dnscat2-server-log.XXXXXX")"
 stdin_fifo="$(mktemp -u "${tmp_dir}/dnscat2-server-stdin.XXXXXX")"
 server_pid=""
+bundle_cmd=()
+
+if ! command -v ruby >/dev/null 2>&1; then
+  echo "ruby is required to run the dnscat2 server test." >&2
+  exit 2
+fi
+
+if command -v bundle >/dev/null 2>&1; then
+  bundle_cmd=(bundle)
+elif command -v bundler >/dev/null 2>&1; then
+  bundle_cmd=(bundler)
+elif ruby -e "require 'bundler'" >/dev/null 2>&1; then
+  bundle_cmd=(ruby -S bundle)
+else
+  echo "Bundler is required to run the dnscat2 server test." >&2
+  echo "Install it with: gem install bundler" >&2
+  exit 2
+fi
 
 cleanup() {
   if [[ -n "${server_pid}" ]] && kill -0 "${server_pid}" 2>/dev/null; then
@@ -26,7 +44,7 @@ cleanup() {
 trap cleanup EXIT
 
 pushd "${server_dir}" >/dev/null
-if ! bundle install --path vendor/bundle >"${bundle_log}" 2>&1; then
+if ! "${bundle_cmd[@]}" install --path vendor/bundle >"${bundle_log}" 2>&1; then
   cat "${bundle_log}" >&2
   echo "dnscat2 server dependencies failed to install." >&2
   exit 2
@@ -35,7 +53,7 @@ fi
 mkfifo "${stdin_fifo}"
 exec 3<>"${stdin_fifo}"
 
-bundle exec ruby dnscat2.rb --dns "host=${dns_ip},port=${dns_port}" --secret "${dns_secret}" --firehose <"${stdin_fifo}" >"${server_log}" 2>&1 &
+"${bundle_cmd[@]}" exec ruby dnscat2.rb --dns "host=${dns_ip},port=${dns_port}" --secret "${dns_secret}" --firehose <"${stdin_fifo}" >"${server_log}" 2>&1 &
 server_pid=$!
 popd >/dev/null
 
