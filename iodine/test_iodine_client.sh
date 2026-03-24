@@ -3,11 +3,12 @@ set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 client_bin="${project_dir}/bin/iodine"
+tmp_dir="${TMPDIR:-/tmp}"
 
 dns_ip="${DNS_IP:-127.0.0.1}"
 topdomain="${DNS_DOMAIN:-t1.test}"
 password="${DNS_PASSWORD:-codexsecret}"
-client_log="$(mktemp -t iodine-client-log)"
+client_log="$(mktemp "${tmp_dir}/iodine-client-log.XXXXXX")"
 
 cleanup() {
   rm -f "${client_log}"

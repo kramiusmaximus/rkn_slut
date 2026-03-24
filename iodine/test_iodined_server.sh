@@ -3,13 +3,14 @@ set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 server_bin="${project_dir}/bin/iodined"
+tmp_dir="${TMPDIR:-/tmp}"
 
 dns_ip="${DNS_IP:-0.0.0.0}"
 dns_port="${DNS_PORT:-53}"
 topdomain="${DNS_DOMAIN:-t1.test}"
 password="${DNS_PASSWORD:-codexsecret}"
 tunnel_ip="${TUNNEL_IP:-10.10.10.1}"
-server_log="$(mktemp -t iodine-server-log)"
+server_log="$(mktemp "${tmp_dir}/iodine-server-log.XXXXXX")"
 server_pid=""
 
 cleanup() {

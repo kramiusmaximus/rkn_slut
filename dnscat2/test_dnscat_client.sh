@@ -3,12 +3,13 @@ set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 client_bin="${project_dir}/client/dnscat"
+tmp_dir="${TMPDIR:-/tmp}"
 
 dns_ip="${DNS_IP:-127.0.0.1}"
 dns_port="${DNS_PORT:-53}"
 dns_secret="${DNS_SECRET:-codexsecret}"
 dns_domain="${DNS_DOMAIN:-}"
-client_log="$(mktemp -t dnscat2-client-log)"
+client_log="$(mktemp "${tmp_dir}/dnscat2-client-log.XXXXXX")"
 
 cleanup() {
   rm -f "${client_log}"

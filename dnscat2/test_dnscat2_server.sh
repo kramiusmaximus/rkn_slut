@@ -3,13 +3,14 @@ set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 server_dir="${project_dir}/server"
+tmp_dir="${TMPDIR:-/tmp}"
 
 dns_ip="${DNS_IP:-0.0.0.0}"
 dns_port="${DNS_PORT:-53}"
 dns_secret="${DNS_SECRET:-codexsecret}"
-bundle_log="$(mktemp -t dnscat2-server-bundle)"
-server_log="$(mktemp -t dnscat2-server-log)"
-stdin_fifo="$(mktemp -u -t dnscat2-server-stdin)"
+bundle_log="$(mktemp "${tmp_dir}/dnscat2-server-bundle.XXXXXX")"
+server_log="$(mktemp "${tmp_dir}/dnscat2-server-log.XXXXXX")"
+stdin_fifo="$(mktemp -u "${tmp_dir}/dnscat2-server-stdin.XXXXXX")"
 server_pid=""
 
 cleanup() {
