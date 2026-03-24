@@ -44,7 +44,19 @@ cleanup() {
 trap cleanup EXIT
 
 pushd "${server_dir}" >/dev/null
-if ! "${bundle_cmd[@]}" install --path vendor/bundle >"${bundle_log}" 2>&1; then
+: >"${bundle_log}"
+
+if ! "${bundle_cmd[@]}" config set --local path vendor/bundle >>"${bundle_log}" 2>&1; then
+  if ! "${bundle_cmd[@]}" config path vendor/bundle >>"${bundle_log}" 2>&1; then
+    if ! "${bundle_cmd[@]}" install --path vendor/bundle >>"${bundle_log}" 2>&1; then
+      cat "${bundle_log}" >&2
+      echo "dnscat2 server dependencies failed to install." >&2
+      exit 2
+    fi
+  fi
+fi
+
+if ! "${bundle_cmd[@]}" install >>"${bundle_log}" 2>&1; then
   cat "${bundle_log}" >&2
   echo "dnscat2 server dependencies failed to install." >&2
   exit 2
